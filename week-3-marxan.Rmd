@@ -17,13 +17,26 @@ library(here)
 library(janitor)
 library(prioritizr)
 library(sf)
+library(slam)
+library(gurobi)
+library(ggmap)
 library(tidyverse)
 
 ```
 
 Information on the `prioritizr` package is at https://mran.microsoft.com/snapshot/2018-03-04/web/packages/prioritizr/vignettes/quick_start.html. 
 
-Note: for `solve()` function, must have a solver installed. Easiest way I found for macs was with `lsymphony` : `install.packages("lpsymphony")`. 
+A really useful example for summed solutions is under "Selection Frequencies" here: https://cran.r-project.org/web/packages/prioritizr/vignettes/tasmania.html 
+
+Note: for `solve()` function, must have a solver installed, which for the the summing/multiple runs process, must be `gurobi`. If you don't have it, it requires getting an academic license and is generally a hassle which required a lot of troubleshooting for me... but the instructions below should make it quicker for you if you decide to. 
+
+1. Download gurobi (https://www.gurobi.com/downloads/gurobi-optimizer-eula/)
+2. Request an academic license (https://www.gurobi.com/downloads/end-user-license-agreement-academic/)
+2. Verify license in terminal by copying and pasting information in your acount > your licenses
+3. Must install r package with`install.packages('/Library/gurobi902/mac64/R/gurobi_9.0-2_R_3.6.1.tgz', repos=NULL)` (if on a mac and downloaded the most recent version of gurobi, don't download newest version of R! (4.0.0)).
+4. must install slam package with `install.packages("slam")
+5. add gurobi and slam libraries
+
 
 ### Read in Morro Bay data
 
@@ -52,7 +65,9 @@ status <- read_csv("spec_name_status.csv") %>%
 parcels <- read_sf(dsn = here("MorroBay_data"), layer = "MorroBay_parcels") %>% 
   clean_names()
 
-plot(parcels)
+ggplot(data = parcels) +
+  geom_sf()
+
 
 # create df with pus and polygons  
 
@@ -63,30 +78,71 @@ plot(parcels)
 
 ```{r}
 
-# marxan_problem - "canned" approach. This seems to spit out yes/nos instead of sums. The page recommended against this approach because it's less customizable. 
+# marxan_problem(), more 'canned' approach apparently, but seems good for our purposes. If more customizations are desired, see problem() instead. 
 
-marxan_test_1 <- marxan_problem(x = pu,
+marxan_1 <- marxan_problem(x = pu,
                          spec = spec, 
                          puvspr = puvsp, 
                          bound = NULL,
                          blm = 0)
 
-marxan_solve_1 <- solve(marxan_test_1)
+marxan_1_problem <- marxan_1 %>% 
+  add_gurobi_solver(gap = 0) %>% # check meaning of gap
+  add_pool_portfolio(method = 2, number_solutions = 100) # see method meaning under ?add_pool_portfolio
 
-```
+print(marxan_1_problem)
 
-```{r}
+marxan_1_soln <- solve(marxan_1_problem)
 
-# problem (instead of marxan_problem). This approach is supposedly more customizable, planning to work with this more
+# sum solutions
 
-test_1 <- problem(pu, spec, cost_column = "cost", rij = puvsp)
-print(test_1)
+marxan_1_ssoln <- marxan_1_soln %>% 
+  mutate(sum = rowSums(.[6:105])) %>% 
+  select(id, cost, status, locked_in, locked_out, sum)
+
+hist(marxan_1_ssoln$sum)
 
 ```
 
 
 ### Join parcels polygons with output
 
+```{r}
 
+parcels_marxan_1 <- inner_join(parcels, marxan_1_ssoln, by = "id")
 
+ggplot(data = parcels_marxan_1) +
+  geom_sf(aes(fill = sum),
+          color = "white",
+          size = 0.05) + 
+  scale_fill_binned(low = "slategray2",
+                      high = "navy") + 
+  labs(fill = "Summed \nSolution") +
+  theme_minimal()
 
+# add basemap 
+
+morrobay <- get_map(location = c(lon = -120.7665, lat = 35.335),
+                    zoom = 12,
+                    maptype = "terrain-background", 
+                    source = "google")
+
+# see different ggmap maptypes here: https://www.nceas.ucsb.edu/sites/default/files/2020-04/ggmapCheatsheet.pdf
+# - background means no references, omit if want references
+
+ggmap(morrobay) +
+    geom_sf(data = parcels_marxan_1,
+            aes(fill = sum),
+          color = "white",
+          size = 0.05,
+          alpha = 0.9,
+          inherit.aes = FALSE) + 
+  coord_sf(crs = st_crs(4326)) +
+  scale_fill_binned(low = "mistyrose3",
+                      high = "red4") + 
+  labs(fill = "Summed \nSolution",
+       x = NULL,
+       y = NULL) +
+  theme_minimal()
+
+```
