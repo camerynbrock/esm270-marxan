@@ -54,7 +54,7 @@ parcels <- read_sf(dsn = here("MorroBay_data"), layer = "MorroBay_parcels") %>%
 
 plot(parcels)
 
-# create df with pus and polygons
+# create df with pus and polygons 
 
 
 ```
