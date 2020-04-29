@@ -2,7 +2,7 @@
 title: "ESM 270 Week 3 Marxan"
 author: "Cameryn Brock"
 date: "4/28/2020"
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
@@ -20,6 +20,7 @@ library(sf)
 library(slam)
 library(gurobi)
 library(ggmap)
+library(patchwork)
 library(tidyverse)
 
 ```
@@ -87,7 +88,7 @@ marxan_1 <- marxan_problem(x = pu,
                          blm = 0)
 
 marxan_1_problem <- marxan_1 %>% 
-  add_gurobi_solver(gap = 0) %>% # check meaning of gap
+  add_gurobi_solver(gap = 0.15) %>% 
   add_pool_portfolio(method = 2, number_solutions = 100) # see method meaning under ?add_pool_portfolio
 
 print(marxan_1_problem)
@@ -134,15 +135,114 @@ ggmap(morrobay) +
     geom_sf(data = parcels_marxan_1,
             aes(fill = sum),
           color = "white",
-          size = 0.05,
-          alpha = 0.9,
+          size = 0.1,
+          alpha = 0.85,
           inherit.aes = FALSE) + 
   coord_sf(crs = st_crs(4326)) +
-  scale_fill_binned(low = "mistyrose3",
-                      high = "red4") + 
-  labs(fill = "Summed \nSolution",
+  scale_fill_gradient(low = "tan",
+                    high = "red3") +
+  labs(title = "All Species",
+       fill = "Summed \nSolution",
        x = NULL,
        y = NULL) +
   theme_minimal()
 
+ggsave("spec_graph.png")
+
 ```
+
+## Considering endangered species
+
+#### Make spec and pucsp files with only endangered & threatened species
+
+```{r}
+
+end_status <- status %>% 
+  mutate("endangered" = case_when(
+    str_detect(status, pattern = "endangered") == TRUE ~ "yes",
+    str_detect(status, pattern = "threatened") == TRUE ~ "yes",
+    T ~ "no")) %>% 
+  filter(endangered == "yes")
+
+end_spec <- merge(end_status, spec, by = "id") %>% 
+  select(id, amount, spf, name.x) %>% 
+  rename("name" = "name.x")
+
+puvsp_id <- puvsp %>% 
+  rename("id" = "species")
+
+end_puvsp <- merge(end_status, puvsp_id, by = "id") %>% 
+  rename("species" = "id")
+
+```
+
+
+### Run Marxan problem
+```{r}
+
+marxan_end <- marxan_problem(x = pu,
+                         spec = end_spec, 
+                         puvspr = end_puvsp, 
+                         bound = NULL,
+                         blm = 0)
+
+marxan_end_problem <- marxan_end %>% 
+  add_gurobi_solver(gap = 0.15) %>% 
+  add_pool_portfolio(method = 2, number_solutions = 100)
+
+print(marxan_end_problem)
+
+marxan_end_soln <- solve(marxan_end_problem)
+
+# sum solutions
+
+marxan_end_ssoln <- marxan_end_soln %>% 
+  mutate(sum = rowSums(.[6:105])) %>% 
+  select(id, cost, status, locked_in, locked_out, sum)
+
+hist(marxan_end_ssoln$sum)
+
+```
+
+### Join parcels polygons with output
+
+```{r}
+
+parcels_marxan_end <- inner_join(parcels, marxan_end_ssoln, by = "id")
+
+ggplot(data = parcels_marxan_end) +
+  geom_sf(aes(fill = sum),
+          color = "white",
+          size = 0.05) + 
+  scale_fill_binned(low = "slategray2",
+                      high = "navy") + 
+  labs(fill = "Summed \nSolution") +
+  theme_minimal()
+
+```
+
+# Map
+
+```{r}
+
+ggmap(morrobay) +
+    geom_sf(data = parcels_marxan_end,
+            aes(fill = sum),
+          color = "white",
+          size = 0.15,
+          alpha = 0.85,
+          inherit.aes = FALSE) + 
+  coord_sf(crs = st_crs(4326)) +
+  scale_fill_gradient(low = "tan",
+                      high = "red3") + 
+  labs(title = "Endangered & Threatened Species",
+       fill = "Summed \nSolution",
+       x = NULL,
+       y = NULL) +
+  theme_minimal()
+
+ggsave("end_graph.png")
+
+```
+
+
