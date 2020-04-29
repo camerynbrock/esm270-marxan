@@ -6,28 +6,31 @@ output: html_document
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
 ```
 
 ```{r}
-
-library(tidyverse)
+ 
 library(here)
 library(janitor)
 library(prioritizr)
 library(sf)
+library(tidyverse)
 
 ```
 
-Information on the 'prioritizr' package is at https://mran.microsoft.com/snapshot/2018-03-04/web/packages/prioritizr/vignettes/quick_start.html . 
+Information on the `prioritizr` package is at https://mran.microsoft.com/snapshot/2018-03-04/web/packages/prioritizr/vignettes/quick_start.html. 
 
-Note: for 'solve()' function, must have a solver installed. Easiest way I found for macs was with 'lsymphony' : 'install.packages("lpsymphony")'. 
+Note: for `solve()` function, must have a solver installed. Easiest way I found for macs was with `lsymphony` : `install.packages("lpsymphony")`. 
 
 ### Read in Morro Bay data
 
 ```{r}
 
 # species and pu data
+# all csv files are unaltered from the xlsx files in the R drive. Just saved as csvs. 
 
 spec <- read_csv("MorroBay_spec.csv") %>% 
   head(140) %>%  # read in extra blank rows 
@@ -49,6 +52,8 @@ status <- read_csv("spec_name_status.csv") %>%
 parcels <- read_sf(dsn = here("MorroBay_data"), layer = "MorroBay_parcels") %>% 
   clean_names()
 
+plot(parcels)
+
 # create df with pus and polygons
 
 
@@ -66,13 +71,13 @@ marxan_test_1 <- marxan_problem(x = pu,
                          bound = NULL,
                          blm = 0)
 
-marxan_solve_1 <- solve(test_1)
+marxan_solve_1 <- solve(marxan_test_1)
 
 ```
 
 ```{r}
 
-# problem
+# problem (instead of marxan_problem). This approach is supposedly more customizable, planning to work with this more
 
 test_1 <- problem(pu, spec, cost_column = "cost", rij = puvsp)
 print(test_1)
