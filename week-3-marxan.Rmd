@@ -1,0 +1,87 @@
+---
+title: "ESM 270 Week 3 Marxan"
+author: "Cameryn Brock"
+date: "4/28/2020"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+
+library(tidyverse)
+library(here)
+library(janitor)
+library(prioritizr)
+library(sf)
+
+```
+
+Information on the 'prioritizr' package is at https://mran.microsoft.com/snapshot/2018-03-04/web/packages/prioritizr/vignettes/quick_start.html . 
+
+Note: for 'solve()' function, must have a solver installed. Easiest way I found for macs was with 'lsymphony' : 'install.packages("lpsymphony")'. 
+
+### Read in Morro Bay data
+
+```{r}
+
+# species and pu data
+
+spec <- read_csv("MorroBay_spec.csv") %>% 
+  head(140) %>%  # read in extra blank rows 
+  rename("amount" = "target") # target is called "prop" (relative) or "amount" (absolute)
+
+pu <- read_csv("MorroBay_pu.csv") %>% 
+  select(1:3) # read in extra blank column
+
+puvsp <- read_csv("MorroBay_puvspr.csv") %>% 
+  select(1:3) %>% 
+  head(11849)
+
+status <- read_csv("spec_name_status.csv") %>% 
+  select(1:3) %>% 
+  head(140)
+
+# polygons
+
+parcels <- read_sf(dsn = here("MorroBay_data"), layer = "MorroBay_parcels") %>% 
+  clean_names()
+
+# create df with pus and polygons
+
+
+```
+
+### Run Marxan problem
+
+```{r}
+
+# marxan_problem - "canned" approach. This seems to spit out yes/nos instead of sums. The page recommended against this approach because it's less customizable. 
+
+marxan_test_1 <- marxan_problem(x = pu,
+                         spec = spec, 
+                         puvspr = puvsp, 
+                         bound = NULL,
+                         blm = 0)
+
+marxan_solve_1 <- solve(test_1)
+
+```
+
+```{r}
+
+# problem
+
+test_1 <- problem(pu, spec, cost_column = "cost", rij = puvsp)
+print(test_1)
+
+```
+
+
+### Join parcels polygons with output
+
+
+
+
