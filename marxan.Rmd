@@ -21,7 +21,7 @@ knitr::opts_chunk$set(echo = TRUE,
 
 ## Marxan
 
-
+Marxan is a commonly used spatial planning tool. 
 
 ## Priotitizr
 
@@ -39,6 +39,24 @@ For the `solve()` function, you must have a solver installed. For the the proces
 3. Must install r package with`install.packages('/Library/gurobi902/mac64/R/gurobi_9.0-2_R_3.6.1.tgz', repos=NULL)` (if on a mac and downloaded the most recent version of gurobi, don't download newest version of R! (4.0.0)).
 4. must install slam package with `install.packages("slam")
 5. add gurobi and slam libraries
+
+## Data
+
+We will be using a case study (and the data they prepared) from a past group project on the Morro Bay National Estuary Program.
+
+**Species data** 
+
+* MorroBay_species_polyons: shapefiles of species locations 
+* MorroBay_species_pts: point data of species locations 
+* MorroBay_habitats: shapefile of location of key habitats
+* morro-bay-spec.csv: information on species/habitat ID (the conservation feature), target value for that species (these values are 30% of the # of parcels containing that species or 10% for habitats), and the species name. The 'spf' column is the 'species penalty factor' and is a multiplier that determines the penalty if the conservation objective is *not* met. 
+* spec-name-status.csv: information on species status.
+
+**Parcel data**
+
+* morro-bay-pu.csv: includes information on the planning unit ID, the cost of that planning unit, and each parcel's status (value 0 = available for prioritization, value 3 = locking in,  3 = locked out)
+* morro-bay-puvspr.csv: includes information on the amount (presence/absence) of each species in each planning unit (pu)
+
 
 # Getting started
 
@@ -65,21 +83,21 @@ Note: this will not work for installing `gurobi`. Instructions are in the introd
 
 All .csv files in this tutorial are unaltered from the .xlsx files provided in the R drive. They have only been renamed and saved as csvs. The "data" folder is identical to the MorroBay_data folder provided in the R drive, it has only been renamed. 
 
-### Species and pu data
+### Species and pu information
 
 ```{r}
-spec <- read_csv("morro-bay-spec.csv") %>% 
+spec <- read_csv(here("data", "morro-bay-spec.csv")) %>% 
   head(140) %>%  # mine reads in extra blank rows - skip if yours does not 
   rename("amount" = "target") # target is called "prop" (relative) or "amount" (absolute)
 
-pu <- read_csv("morro-bay-pu.csv") %>% 
+pu <- read_csv(here("data", "morro-bay-pu.csv")) %>% 
   select(1:3) # mine reads in an extra blank column - skip if yours does not
 
-puvsp <- read_csv("morro-bay-puvspr.csv") %>% 
+puvsp <- read_csv(here("data", "morro-bay-puvspr.csv")) %>% 
   select(1:3) %>% 
   head(11849)
 
-status <- read_csv("spec-name-status.csv") %>% 
+status <- read_csv(here("data", "spec-name-status.csv")) %>% 
   select(1:3) %>% 
   head(140)
 ```
@@ -100,6 +118,11 @@ ggplot(data = parcels) +
 
 The function `marxan_problem()` in the `prioritizr` package gives us the "canned" approach that works for our purposes. If more customizations are desired, feel free to explore the `problem()` function instead. 
 
+Note the following parameters: 
+
+* No boundary length (`blm = 0`)
+* Number of runs = 100 (`number_solutions = 100`)
+
 ```{r}
 marxan_1 <- marxan_problem(x = pu,
                          spec = spec, 
@@ -109,9 +132,9 @@ marxan_1 <- marxan_problem(x = pu,
 
 marxan_1_problem <- marxan_1 %>% 
   add_gurobi_solver(gap = 0.15) %>% 
-  add_pool_portfolio(method = 2, number_solutions = 100) # see method meaning under ?add_pool_portfolio
-
-print(marxan_1_problem)
+  add_pool_portfolio(method = 2, number_solutions = 100) 
+# see gap meaning under ?add_gurobi_solver: 0.15 gives us results closest to that of using marxan software
+# see method meaning under ?add_pool_portfolio
 
 marxan_1_soln <- solve(marxan_1_problem)
 ```
@@ -137,7 +160,7 @@ ggplot(data = parcels_marxan_1) +
   geom_sf(aes(fill = sum),
           color = "white",
           size = 0.05) + 
-  scale_fill_binned(low = "slategray2",
+  scale_fill_gradient(low = "slategray2",
                       high = "navy") + 
   labs(fill = "Summed \nSolution") +
   theme_minimal()
@@ -167,8 +190,8 @@ all_spec <-
           alpha = 0.85,
           inherit.aes = FALSE) + 
   coord_sf(crs = st_crs(4326)) +
-  scale_fill_gradient(low = "tan",
-                    high = "red3") +
+  scale_fill_gradient(low = "slategray2",
+                    high = "navy") +
   labs(title = "All Species",
        fill = "Summed \nSolution",
        x = NULL,
@@ -181,6 +204,8 @@ all_spec
 # Analyze endangered species
 
 ## Create dataframes
+
+Here we create spec and puvsp data frames similar to those we had for all species, but containing only endangered or threatened species.
 
 ```{r}
 end_status <- status %>% 
@@ -203,6 +228,11 @@ end_puvsp <- merge(end_status, puvsp_id, by = "id") %>%
 
 ## Run Marxan
 
+Note the following parameters (same as for all species): 
+
+* No boundary length (`blm = 0`)
+* Number of runs = 100 (`number_solutions = 100`)
+
 ```{r}
 marxan_end <- marxan_problem(x = pu,
                          spec = end_spec, 
@@ -213,8 +243,8 @@ marxan_end <- marxan_problem(x = pu,
 marxan_end_problem <- marxan_end %>% 
   add_gurobi_solver(gap = 0.15) %>% 
   add_pool_portfolio(method = 2, number_solutions = 100)
-
-print(marxan_end_problem)
+# see gap meaning under ?add_gurobi_solver: 0.15 gives us results closest to that of using marxan software
+# see method meaning under ?add_pool_portfolio
 
 marxan_end_soln <- solve(marxan_end_problem)
 ```
@@ -240,7 +270,7 @@ ggplot(data = parcels_marxan_end) +
   geom_sf(aes(fill = sum),
           color = "white",
           size = 0.05) + 
-  scale_fill_binned(low = "slategray2",
+  scale_fill_gradient(low = "slategray2",
                       high = "navy") + 
   labs(fill = "Summed \nSolution") +
   theme_minimal()
@@ -258,8 +288,8 @@ end_spec <-
           alpha = 0.85,
           inherit.aes = FALSE) + 
   coord_sf(crs = st_crs(4326)) +
-  scale_fill_gradient(low = "tan",
-                      high = "red3") + 
+  scale_fill_gradient(low = "slategray2",
+                      high = "navy") + 
   labs(title = "Endangered & Threatened Species",
        fill = "Summed \nSolution",
        x = NULL,
@@ -271,23 +301,26 @@ end_spec
 
 # Combine maps with patchwork
 
-This step isn't necessary, but is great if you want to present your maps together. Patchwork uses PEMDAS to combine ggplots together into one graphic. For example, `plot_1 + plot_2` will make an image of the plots *side by side*, whereas `plot_1 / plot_2` will make an image of plot_1 *over* plot_2. For more information, see https://github.com/thomasp85/patchwork
+This step isn't necessary, but is really convenient if you want to present your maps together in your report. `patchwork` uses PEMDAS to combine ggplots together into one graphic. For example, `plot_1 + plot_2` will make an image of the plots *side by side*, whereas `plot_1 / plot_2` will make an image of plot_1 *over* plot_2. For more information, see https://github.com/thomasp85/patchwork
 
-```{r, fig.width = 9}
+First, make the all_spec graph without a legend so that the combined image has only one legend.
 
-# Make the all_spec graph without a legend so that the combined image has only one legend
-
+```{r}
 all_no_lgnd <- all_spec +
   theme(legend.position = "none")
-  
-# Combine graphs
+```
 
+Next, combine the graphs with `patchwork`
+
+```{r, fig.width = 9}
 spec_graphs <- all_no_lgnd + end_spec
 
 spec_graphs
+```
 
-# Save graphs as .png to add to your report
+Finally, save the image to add to your report!
 
+```{r, fig.width = 9}
 ggsave("spec-graphs.png")
 ```
 
