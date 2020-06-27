@@ -1,0 +1,293 @@
+---
+title: "Marxan in R"
+subtitle: "ESM 270 Tutorial"
+author: "Cameryn Brock"
+date: "6/27/2020"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+---
+
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,
+                      message = FALSE,
+                      warning = FALSE)
+```
+
+# Introduction
+
+## Marxan
+
+
+
+## Priotitizr
+
+Information on the `prioritizr` package can be found at https://mran.microsoft.com/snapshot/2018-03-04/web/packages/prioritizr/vignettes/quick_start.html. 
+
+A really useful example for summed solutions is under "Selection Frequencies" here: https://cran.r-project.org/web/packages/prioritizr/vignettes/tasmania.html 
+
+## Gurobi
+
+For the `solve()` function, you must have a solver installed. For the the process with summing and multiple runs process, this must be `gurobi`. This requires following the instructions below.  
+
+1. Download gurobi (https://www.gurobi.com/downloads/gurobi-optimizer-eula/)
+2. Request an academic license (https://www.gurobi.com/downloads/end-user-license-agreement-academic/)
+2. Verify license in terminal by copying and pasting information in your acount > your licenses
+3. Must install r package with`install.packages('/Library/gurobi902/mac64/R/gurobi_9.0-2_R_3.6.1.tgz', repos=NULL)` (if on a mac and downloaded the most recent version of gurobi, don't download newest version of R! (4.0.0)).
+4. must install slam package with `install.packages("slam")
+5. add gurobi and slam libraries
+
+# Getting started
+
+## Attach packages
+
+```{r}
+library(here)
+library(janitor)
+library(prioritizr) # marxan
+library(sf) # spatial features
+library(slam) # to use gurobi
+library(gurobi) # solver
+library(ggmap) # basemaps
+library(patchwork) 
+library(tidyverse)
+```
+
+If you do not have any of these packages installed, run the following in the console: 
+`install.packages("package name")`
+
+Note: this will not work for installing `gurobi`. Instructions are in the introduction section. 
+
+## Read in data
+
+All .csv files in this tutorial are unaltered from the .xlsx files provided in the R drive. They have only been renamed and saved as csvs. The "data" folder is identical to the MorroBay_data folder provided in the R drive, it has only been renamed. 
+
+### Species and pu data
+
+```{r}
+spec <- read_csv("morro-bay-spec.csv") %>% 
+  head(140) %>%  # mine reads in extra blank rows - skip if yours does not 
+  rename("amount" = "target") # target is called "prop" (relative) or "amount" (absolute)
+
+pu <- read_csv("morro-bay-pu.csv") %>% 
+  select(1:3) # mine reads in an extra blank column - skip if yours does not
+
+puvsp <- read_csv("morro-bay-puvspr.csv") %>% 
+  select(1:3) %>% 
+  head(11849)
+
+status <- read_csv("spec-name-status.csv") %>% 
+  select(1:3) %>% 
+  head(140)
+```
+
+### Polygons
+
+```{r}
+parcels <- read_sf(dsn = here("data"), layer = "MorroBay_parcels") %>% 
+  clean_names()
+
+ggplot(data = parcels) +
+  geom_sf()
+```
+
+# Analyze all species
+
+## Run Marxan
+
+The function `marxan_problem()` in the `prioritizr` package gives us the "canned" approach that works for our purposes. If more customizations are desired, feel free to explore the `problem()` function instead. 
+
+```{r}
+marxan_1 <- marxan_problem(x = pu,
+                         spec = spec, 
+                         puvspr = puvsp, 
+                         bound = NULL,
+                         blm = 0)
+
+marxan_1_problem <- marxan_1 %>% 
+  add_gurobi_solver(gap = 0.15) %>% 
+  add_pool_portfolio(method = 2, number_solutions = 100) # see method meaning under ?add_pool_portfolio
+
+print(marxan_1_problem)
+
+marxan_1_soln <- solve(marxan_1_problem)
+```
+
+## Sum solutions
+
+```{r}
+marxan_1_ssoln <- marxan_1_soln %>% 
+  mutate(sum = rowSums(.[6:105])) %>% 
+  select(id, cost, status, locked_in, locked_out, sum)
+
+hist(marxan_1_ssoln$sum)
+```
+
+## Create map
+
+### Join polygons with output
+
+```{r}
+parcels_marxan_1 <- inner_join(parcels, marxan_1_ssoln, by = "id")
+
+ggplot(data = parcels_marxan_1) +
+  geom_sf(aes(fill = sum),
+          color = "white",
+          size = 0.05) + 
+  scale_fill_binned(low = "slategray2",
+                      high = "navy") + 
+  labs(fill = "Summed \nSolution") +
+  theme_minimal()
+```
+
+### Add basemap
+
+This step is optional, but will make your map look better and is good to learn for further spatial analyses in R. Unfortunately, the options for basemaps in R are limited. Here, I have used the `ggmaps` package because it is the most accessible, however, it is still not very accessible compared to other R packages.
+
+Using `ggmap` requires getting an API key, which is a bit of a hassle, but worth it. Instructions are here: https://cran.r-project.org/web/packages/ggmap/readme/README.html
+
+For a ggmap cheatsheet, including the different basemaps in ggmaps, see: https://www.nceas.ucsb.edu/sites/default/files/2020-04/ggmapCheatsheet.pdf
+
+
+```{r}
+morrobay <- get_map(location = c(lon = -120.7665, lat = 35.335),
+                    zoom = 12,
+                    maptype = "terrain-background", # - background means no references, omit if want references
+                    source = "google")
+
+all_spec <- 
+  ggmap(morrobay) +
+    geom_sf(data = parcels_marxan_1,
+            aes(fill = sum),
+          color = "white",
+          size = 0.1,
+          alpha = 0.85,
+          inherit.aes = FALSE) + 
+  coord_sf(crs = st_crs(4326)) +
+  scale_fill_gradient(low = "tan",
+                    high = "red3") +
+  labs(title = "All Species",
+       fill = "Summed \nSolution",
+       x = NULL,
+       y = NULL) +
+  theme_minimal()
+
+all_spec
+```
+
+# Analyze endangered species
+
+## Create dataframes
+
+```{r}
+end_status <- status %>% 
+  mutate("endangered" = case_when(
+    str_detect(status, pattern = "endangered") == TRUE ~ "yes",
+    str_detect(status, pattern = "threatened") == TRUE ~ "yes",
+    T ~ "no")) %>% 
+  filter(endangered == "yes")
+
+end_spec <- merge(end_status, spec, by = "id") %>% 
+  select(id, amount, spf, name.x) %>% 
+  rename("name" = "name.x")
+
+puvsp_id <- puvsp %>% 
+  rename("id" = "species")
+
+end_puvsp <- merge(end_status, puvsp_id, by = "id") %>% 
+  rename("species" = "id")
+```
+
+## Run Marxan
+
+```{r}
+marxan_end <- marxan_problem(x = pu,
+                         spec = end_spec, 
+                         puvspr = end_puvsp, 
+                         bound = NULL,
+                         blm = 0)
+
+marxan_end_problem <- marxan_end %>% 
+  add_gurobi_solver(gap = 0.15) %>% 
+  add_pool_portfolio(method = 2, number_solutions = 100)
+
+print(marxan_end_problem)
+
+marxan_end_soln <- solve(marxan_end_problem)
+```
+
+## Sum solutions
+
+```{r}
+marxan_end_ssoln <- marxan_end_soln %>% 
+  mutate(sum = rowSums(.[6:105])) %>% 
+  select(id, cost, status, locked_in, locked_out, sum)
+
+hist(marxan_end_ssoln$sum)
+```
+
+## Create map
+
+### Join polygons with output
+
+```{r}
+parcels_marxan_end <- inner_join(parcels, marxan_end_ssoln, by = "id")
+
+ggplot(data = parcels_marxan_end) +
+  geom_sf(aes(fill = sum),
+          color = "white",
+          size = 0.05) + 
+  scale_fill_binned(low = "slategray2",
+                      high = "navy") + 
+  labs(fill = "Summed \nSolution") +
+  theme_minimal()
+```
+
+### Add basemap
+
+```{r}
+end_spec <- 
+  ggmap(morrobay) +
+    geom_sf(data = parcels_marxan_end,
+            aes(fill = sum),
+          color = "white",
+          size = 0.1,
+          alpha = 0.85,
+          inherit.aes = FALSE) + 
+  coord_sf(crs = st_crs(4326)) +
+  scale_fill_gradient(low = "tan",
+                      high = "red3") + 
+  labs(title = "Endangered & Threatened Species",
+       fill = "Summed \nSolution",
+       x = NULL,
+       y = NULL) +
+  theme_minimal()
+
+end_spec
+```
+
+# Combine maps with patchwork
+
+This step isn't necessary, but is great if you want to present your maps together. Patchwork uses PEMDAS to combine ggplots together into one graphic. For example, `plot_1 + plot_2` will make an image of the plots *side by side*, whereas `plot_1 / plot_2` will make an image of plot_1 *over* plot_2. For more information, see https://github.com/thomasp85/patchwork
+
+```{r, fig.width = 9}
+
+# Make the all_spec graph without a legend so that the combined image has only one legend
+
+all_no_lgnd <- all_spec +
+  theme(legend.position = "none")
+  
+# Combine graphs
+
+spec_graphs <- all_no_lgnd + end_spec
+
+spec_graphs
+
+# Save graphs as .png to add to your report
+
+ggsave("spec-graphs.png")
+```
+
