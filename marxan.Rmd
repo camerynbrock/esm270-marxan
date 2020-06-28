@@ -54,7 +54,7 @@ We will be using a case study (and the data they prepared) from a past group pro
 
 * morro-bay-pu.csv: includes information on the planning unit ID, the cost of that planning unit, and each parcel's status (value 0 = available for prioritization, value 3 = locking in,  3 = locked out)
 * morro-bay-puvspr.csv: includes information on the amount (presence/absence) of each species in each planning unit (pu)
-
+ 
 
 # Getting started
 
