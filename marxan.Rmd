@@ -34,7 +34,7 @@ For the `solve()` function, you must have a solver installed. For the the proces
 1. Download gurobi (https://www.gurobi.com/downloads/gurobi-optimizer-eula/)
 2. Request an academic license (https://www.gurobi.com/downloads/end-user-license-agreement-academic/)
 2. Verify license in terminal by copying and pasting information in your acount > your licenses
-3. Must install r package with`install.packages('/Library/gurobi902/mac64/R/gurobi_9.0-2_R_3.6.1.tgz', repos=NULL)` (if on a mac and downloaded the most recent version of gurobi, don't download newest version of R! (4.0.0; at least as of 5/2020 this was not functional)).
+3. Must install r package with`install.packages('/Library/gurobi902/mac64/R/gurobi_9.0-2_R_3.6.1.tgz', repos=NULL)` (if on a mac and downloaded the most recent version of gurobi, don't download newest version of R! (4.0.0; at least as of 5/2020 this was not functional))
 4. must install slam package with `install.packages("slam")
 5. add gurobi and slam libraries
 
