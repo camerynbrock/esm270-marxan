@@ -236,8 +236,6 @@ marxan_end <- marxan_problem(x = pu,
 marxan_end_problem <- marxan_end %>% 
   add_gurobi_solver(gap = 0.15) %>% 
   add_pool_portfolio(method = 2, number_solutions = 100)
-# gap = optimality gap. 0.15 gives us results closest to that of using marxan software. Learn more under ?add_gurobi_solver 
-# method 2 finds a specified number of solutions that are nearest to optimality. Learn more under ?add_pool_portfolio
 
 marxan_end_soln <- solve(marxan_end_problem)
 ```
