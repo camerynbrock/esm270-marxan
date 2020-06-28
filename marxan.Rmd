@@ -9,8 +9,6 @@ output:
     toc_float: true
 ---
 
-
-
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE,
                       message = FALSE,
@@ -129,14 +127,13 @@ Also note that in solver, we will use 100 runs (`number_solutions = 100`)
 marxan_1 <- marxan_problem(x = pu,
                          spec = spec, 
                          puvspr = puvsp, 
-                         bound = NULL,
-                         blm = 0)
+                         bound = NULL)
 
 marxan_1_problem <- marxan_1 %>% 
   add_gurobi_solver(gap = 0.15) %>% 
   add_pool_portfolio(method = 2, number_solutions = 100) 
 # gap = optimality gap. 0.15 gives us results closest to that of using marxan software. Learn more under ?add_gurobi_solver 
-# method 2 finds a specified number of solutions that are nearest to optimatelity. Learn more under ?add_pool_portfolio
+# method 2 finds a specified number of solutions that are nearest to optimality. Learn more under ?add_pool_portfolio
 
 marxan_1_soln <- solve(marxan_1_problem)
 ```
@@ -150,7 +147,7 @@ marxan_1_ssoln <- marxan_1_soln %>%
 
 hist(marxan_1_ssoln$sum,
      main = "Selection Frequencies",
-     xlab = "Number of runs unit was selected")
+     xlab = "Number of runs that the unit was selected")
 ```
 
 ### Create map
@@ -172,9 +169,7 @@ ggplot(data = parcels_marxan_1) +
 
 #### Add basemap
 
-This step is optional, but will make your map look better and is good to learn for further spatial analyses in R. Unfortunately, the options for basemaps in R are limited. Here, I have used the `ggmaps` package because it is the most accessible, however, it is still not very accessible compared to other R packages.
-
-Using `ggmap` requires getting an API key, which is a bit of a hassle, but worth it. Instructions are here: https://cran.r-project.org/web/packages/ggmap/readme/README.html
+This step is optional, but will make your map look better and is good to learn for further spatial analyses in R. Unfortunately, the options for basemaps in R are limited. Here, I have used the `ggmaps` package because it is the most accessible, however, it is still not very accessible compared to other R packages because you'll need to get an API key. Instructions are here: https://cran.r-project.org/web/packages/ggmap/readme/README.html
 
 For a ggmap cheatsheet, including the different basemaps in ggmaps, see: https://www.nceas.ucsb.edu/sites/default/files/2020-04/ggmapCheatsheet.pdf
 
@@ -182,7 +177,7 @@ For a ggmap cheatsheet, including the different basemaps in ggmaps, see: https:/
 ```{r}
 morrobay <- get_map(location = c(lon = -120.7665, lat = 35.335),
                     zoom = 12,
-                    maptype = "terrain-background", # - background means no references, omit if want references
+                    maptype = "terrain-background", # background means no references, omit if want references
                     source = "google")
 
 all_spec <- 
@@ -232,23 +227,17 @@ end_puvsp <- merge(end_status, puvsp_id, by = "id") %>%
 
 ### Run Marxan
 
-Note the following parameters (same as for all species): 
-
-* No boundary length (`blm = 0`)
-* Number of runs = 100 (`number_solutions = 100`)
-
 ```{r}
 marxan_end <- marxan_problem(x = pu,
                          spec = end_spec, 
                          puvspr = end_puvsp, 
-                         bound = NULL,
-                         blm = 0)
+                         bound = NULL)
 
 marxan_end_problem <- marxan_end %>% 
   add_gurobi_solver(gap = 0.15) %>% 
   add_pool_portfolio(method = 2, number_solutions = 100)
-# see gap meaning under ?add_gurobi_solver: 0.15 gives us results closest to that of using marxan software
-# see method meaning under ?add_pool_portfolio
+# gap = optimality gap. 0.15 gives us results closest to that of using marxan software. Learn more under ?add_gurobi_solver 
+# method 2 finds a specified number of solutions that are nearest to optimality. Learn more under ?add_pool_portfolio
 
 marxan_end_soln <- solve(marxan_end_problem)
 ```
@@ -262,7 +251,7 @@ marxan_end_ssoln <- marxan_end_soln %>%
 
 hist(marxan_end_ssoln$sum,
      main = "Selection frequencies",
-     xlab = "Number of runs units were selected")
+     xlab = "Number of runs that the units were selected")
 ```
 
 ### Create map
