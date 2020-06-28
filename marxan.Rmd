@@ -307,7 +307,7 @@ end_spec
 
 # Combine maps with patchwork
 
-This step isn't necessary, but is really convenient if you want to present your maps together in your report. `patchwork` uses PEMDAS to combine ggplots together into one graphic. For example, `plot_1 + plot_2` will make an image of the plots *side by side*, whereas `plot_1 / plot_2` will make an image of plot_1 *over* plot_2. For more information, see https://github.com/thomasp85/patchwork
+This step isn't necessary, but is really convenient if you want to present your maps together in your report. `patchwork` uses PEMDAS to combine ggplots together into one graphic. For example, `plot_1 + plot_2` will make an image of the plots *side by side*, whereas `plot_1 / plot_2` will make an image of plot_1 *over* plot_2. For more information, see https://github.com/thomasp85/patchwork.
 
 First, make the all_spec graph without a legend so that the combined image has only one legend.
 
