@@ -47,8 +47,8 @@ We will be using a case study (and the data they prepared) from a past group pro
 * MorroBay_species_polyons: shapefiles of species locations 
 * MorroBay_species_pts: point data of species locations 
 * MorroBay_habitats: shapefile of location of key habitats
-* morro-bay-spec.csv: information on species/habitat ID (the conservation feature), target value for that species (these values are 30% of the # of parcels containing that species or 10% for habitats), and the species name. The 'spf' column is the 'species penalty factor' and is a multiplier that determines the penalty if the conservation objective is *not* met. 
-* spec-name-status.csv: information on species status.
+* morro-bay-spec.csv: information on species/habitat ID (the conservation feature), target value for that species (these values are 30% of the # of parcels containing that species or 10% for habitats), and the species name. The 'spf' column is the 'species penalty factor' and is a multiplier that determines the penalty if the conservation objective is *not* met
+* spec-name-status.csv: information on species status
 
 **Parcel data**
 
