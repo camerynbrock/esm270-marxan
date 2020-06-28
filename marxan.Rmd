@@ -18,7 +18,7 @@ knitr::opts_chunk$set(echo = TRUE,
 ```
 
 # Introduction
-
+ 
 Designing reserve networks requires considering both ecological and socioeconomic factors. Marxan is a commonly used spatial planning tool that quantifies these factors to generate efficient reserve networks. Here, we will use species and parcel data from a 2014-15 Bren Group Project in the Morro Bay Watershed to examine the optimate regional reserve network.
 
 ### Priotitizr
