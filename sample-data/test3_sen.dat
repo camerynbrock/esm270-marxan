@@ -1,0 +1,19 @@
+Number of Planning Units 99
+Number of Conservation Values 24
+Starting proportion 0.00
+Boundary length modifier 0.20
+
+Clumping - default step function
+Algorithm Used :Clumping - default step function
+No Heuristic used 
+Number of iterations N/A
+Initial temperature N/A
+Cooling Factor N/A
+Number of temperature decreases N/A
+
+Cost Threshold Disabled
+Threshold penalty factor A N/A
+Threshold penalty factor B N/A
+
+Random Seed -1
+Number of runs 10
